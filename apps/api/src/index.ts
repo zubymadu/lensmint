@@ -10,6 +10,12 @@ import { financialRoutes } from "./modules/financial/financial.routes";
 import { seedingRoutes } from "./modules/seeding/seeding.routes";
 import { streamingRoutes } from "./modules/streaming/streaming.routes";
 import { complianceRoutes } from "./modules/compliance/compliance.routes";
+import { startScheduledJobs } from "./workers/scheduler";
+// Workers — imported for side-effects (registers BullMQ processors)
+import "./workers/payout-release.worker";
+import "./workers/campaign-close.worker";
+import "./workers/fraud-detection.worker";
+import "./workers/ai-qualification.worker";
 import { AppError } from "./lib/errors";
 import { ZodError } from "zod";
 
@@ -41,6 +47,7 @@ async function bootstrap() {
   await app.register(complianceRoutes);
 
   await app.listen({ port: Number(process.env.PORT ?? 3001), host: "0.0.0.0" });
+  await startScheduledJobs();
 }
 
 bootstrap().catch((err) => {

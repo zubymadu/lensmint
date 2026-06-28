@@ -7,6 +7,7 @@ import { campaignRoutes } from "./modules/campaign/campaign.routes";
 import { claimRoutes } from "./modules/claim/claim.routes";
 import { submissionRoutes } from "./modules/submission/submission.routes";
 import { financialRoutes } from "./modules/financial/financial.routes";
+import { seedingRoutes } from "./modules/seeding/seeding.routes";
 import { AppError } from "./lib/errors";
 import { ZodError } from "zod";
 
@@ -33,6 +34,7 @@ async function bootstrap() {
   await app.register(claimRoutes);
   await app.register(submissionRoutes);
   await app.register(financialRoutes);
+  await app.register(seedingRoutes);
 
   await app.listen({ port: Number(process.env.PORT ?? 3001), host: "0.0.0.0" });
 }

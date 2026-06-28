@@ -9,6 +9,7 @@ import { submissionRoutes } from "./modules/submission/submission.routes";
 import { financialRoutes } from "./modules/financial/financial.routes";
 import { seedingRoutes } from "./modules/seeding/seeding.routes";
 import { streamingRoutes } from "./modules/streaming/streaming.routes";
+import { complianceRoutes } from "./modules/compliance/compliance.routes";
 import { AppError } from "./lib/errors";
 import { ZodError } from "zod";
 
@@ -37,6 +38,7 @@ async function bootstrap() {
   await app.register(financialRoutes);
   await app.register(seedingRoutes);
   await app.register(streamingRoutes);
+  await app.register(complianceRoutes);
 
   await app.listen({ port: Number(process.env.PORT ?? 3001), host: "0.0.0.0" });
 }

@@ -1,0 +1,13 @@
+{
+  "expo": {
+    "name": "Lensmint",
+    "slug": "lensmint",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "lensmint",
+    "userInterfaceStyle": "dark",
+    "platforms": ["ios", "android"],
+    "android": { "package": "com.lensmint.app" },
+    "ios": { "bundleIdentifier": "com.lensmint.app" }
+  }
+}

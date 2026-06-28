@@ -12,7 +12,11 @@
       "PowerShell(npm install -g pnpm; $env:PATH = [System.Environment]::GetEnvironmentVariable\\(\"PATH\",\"Machine\"\\) + \";\" + [System.Environment]::GetEnvironmentVariable\\(\"PATH\",\"User\"\\); pnpm --version)",
       "PowerShell(node --version)",
       "PowerShell(npm --version)",
-      "PowerShell($env:PATH = \"C:\\\\Program Files\\\\nodejs;\" + $env:PATH; node --version; npm --version)"
+      "PowerShell($env:PATH = \"C:\\\\Program Files\\\\nodejs;\" + $env:PATH; node --version; npm --version)",
+      "PowerShell(New-Item -ItemType Directory -Force -Path \"C:\\\\Users\\\\Administrator\\\\lensmint\\\\apps\\\\api\\\\src\\\\modules\\\\identity\")",
+      "PowerShell(New-Item -ItemType Directory -Force -Path \"C:\\\\Users\\\\Administrator\\\\lensmint\\\\apps\\\\api\\\\src\\\\modules\\\\trust\")",
+      "PowerShell(New-Item -ItemType Directory -Force -Path \"C:\\\\Users\\\\Administrator\\\\lensmint\\\\apps\\\\api\\\\src\\\\lib\")",
+      "PowerShell(New-Item -ItemType Directory -Force -Path \"C:\\\\Users\\\\Administrator\\\\lensmint\\\\apps\\\\api\\\\src\\\\plugins\")"
     ]
   }
 }

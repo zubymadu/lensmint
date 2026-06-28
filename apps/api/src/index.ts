@@ -5,6 +5,7 @@ import authPlugin from "./plugins/auth";
 import { identityRoutes } from "./modules/identity/identity.routes";
 import { campaignRoutes } from "./modules/campaign/campaign.routes";
 import { claimRoutes } from "./modules/claim/claim.routes";
+import { submissionRoutes } from "./modules/submission/submission.routes";
 import { AppError } from "./lib/errors";
 import { ZodError } from "zod";
 
@@ -29,6 +30,7 @@ async function bootstrap() {
   await app.register(identityRoutes);
   await app.register(campaignRoutes);
   await app.register(claimRoutes);
+  await app.register(submissionRoutes);
 
   await app.listen({ port: Number(process.env.PORT ?? 3001), host: "0.0.0.0" });
 }

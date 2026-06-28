@@ -1,0 +1,531 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ────────────────────────────────────────────────────────────────────
+
+enum Role {
+  brand
+  creator
+  admin
+}
+
+enum TrustTier {
+  tier0
+  tier1
+  tier2
+  tier3
+}
+
+enum KycStatus {
+  unverified
+  pending
+  verified
+  rejected
+}
+
+enum ComplianceTier {
+  commercial
+  personal
+  government
+  political
+}
+
+enum CampaignType {
+  standard
+  seeding
+  streaming
+}
+
+enum SeedingSubtype {
+  review_product
+  promo_wearable
+}
+
+enum StreamingSubtype {
+  sponsored_segment
+  ambient_display
+}
+
+enum QualificationType {
+  brand_material
+  positive_mention
+}
+
+enum CampaignStatus {
+  draft
+  active
+  paused
+  completed
+  cancelled
+}
+
+enum ClaimStatus {
+  active
+  submitted
+  qualifying
+  qualified
+  disqualified
+  under_review
+  paid
+  rejected
+  no_show
+}
+
+enum SubmissionStatus {
+  accepted
+  rejected_mismatch
+  rejected_ownership
+  rejected_timing
+}
+
+enum QualificationMethod {
+  asset_match
+  audio_fingerprint
+  vision
+  transcript_sentiment
+  disclosure_check
+  text_nlp
+}
+
+enum QualificationDecision {
+  pass
+  fail
+  needs_review
+}
+
+enum MetricType {
+  views
+  clicks
+  sales
+  concurrent_viewers
+  peak_viewers
+  watch_time_minutes
+  new_followers
+  chat_engagement
+}
+
+enum MetricVerificationMethod {
+  api
+  manual
+  audited
+}
+
+enum PayoutStatus {
+  held
+  released
+  clawed_back
+  on_hold_name_mismatch
+}
+
+enum PayoutMethod {
+  ngn_bank_transfer
+  stablecoin
+}
+
+enum PspProvider {
+  paystack
+  moniepoint
+  opay
+}
+
+enum LedgerEntryType {
+  deposit
+  commission_revenue
+  payout
+  refund
+  psp_fee_cost
+}
+
+enum TrustEventType {
+  campaign_completed
+  fraud_flag
+  kyc_verified
+  audit_pass
+  seeding_no_show
+}
+
+enum ReviewStatus {
+  pending
+  approved
+  rejected
+}
+
+enum SensitiveContentCategory {
+  medical_fundraising
+  missing_person
+  third_party_named
+  political_in_disguise
+}
+
+enum Currency {
+  NGN
+  USD
+}
+
+// ─── Core Identity ─────────────────────────────────────────────────────────────
+
+model User {
+  id            String     @id @default(cuid())
+  role          Role
+  email         String     @unique
+  phone         String?    @unique
+  passwordHash  String
+  trustTier     TrustTier  @default(tier0)
+  kycStatus     KycStatus  @default(unverified)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  creatorProfile   CreatorProfile?
+  brandProfile     BrandProfile?
+  bankAccount      CreatorBankAccount?
+  trustEvents      TrustEvent[]
+  auditLogs        AuditLog[]
+
+  @@map("users")
+}
+
+model CreatorProfile {
+  id                      String   @id @default(cuid())
+  userId                  String   @unique
+  user                    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  socialHandles           Json     // { platform: handle }
+  streamingHandles        Json?    // { platform: handle }
+  verifiedFollowerCounts  Json?    // { platform: count }
+  verifiedAvgViewers      Int?
+  verifiedStreamHours30d  Float?
+  nicheTags               String[]
+  languages               String[]
+  completedCampaignsCount Int      @default(0)
+  fraudFlags              Int      @default(0)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  claims CampaignClaim[]
+
+  @@map("creator_profiles")
+}
+
+model BrandProfile {
+  id                      String         @id @default(cuid())
+  userId                  String         @unique
+  user                    User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  businessName            String?
+  businessType            String?
+  complianceTier          ComplianceTier @default(commercial)
+  verificationStatus      String         @default("unverified")
+  politicalRegistrationRef String?
+  createdAt               DateTime       @default(now())
+  updatedAt               DateTime       @updatedAt
+
+  campaigns Campaign[]
+
+  @@map("brand_profiles")
+}
+
+// ─── Campaign ──────────────────────────────────────────────────────────────────
+
+model Campaign {
+  id                    String            @id @default(cuid())
+  brandId               String
+  brand                 BrandProfile      @relation(fields: [brandId], references: [id])
+  complianceTier        ComplianceTier
+  title                 String
+  brief                 String
+  platforms             String[]
+  campaignType          CampaignType      @default(standard)
+  seedingSubtype        SeedingSubtype?
+  streamingSubtype      StreamingSubtype?
+  eligibilityCriteria   Json?             // { minAvgViewers, minStreamHours30d, platformVerifiedRequired, niche }
+  contentTypes          String[]
+  qualificationType     QualificationType
+  requiresDisclosureLabel Boolean         @default(false)
+  brandAssets           Json[]            @default([]) // [{ type, url, name }]
+  payoutLadder          Json              // tiered structure
+  budgetCap             Decimal           @db.Decimal(18, 2)
+  targetPeriodDays      Int?
+  maxCreators           Int?
+  budgetSpent           Decimal           @default(0) @db.Decimal(18, 2)
+  currency              Currency          @default(NGN)
+  status                CampaignStatus    @default(draft)
+  startDate             DateTime?
+  endDate               DateTime?
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+
+  claims    CampaignClaim[]
+  inventory ProductInventory[]
+  funding   CampaignFunding?
+
+  @@map("campaigns")
+}
+
+// ─── Claims ────────────────────────────────────────────────────────────────────
+
+model CampaignClaim {
+  id              String        @id @default(cuid())
+  campaignId      String
+  campaign        Campaign      @relation(fields: [campaignId], references: [id])
+  creatorId       String
+  creator         CreatorProfile @relation(fields: [creatorId], references: [id])
+  trackedLink     String?
+  trackedHashtag  String?
+  claimedAt       DateTime      @default(now())
+  status          ClaimStatus   @default(active)
+  updatedAt       DateTime      @updatedAt
+
+  submissionEvents    SubmissionEvent[]
+  qualificationResult QualificationResult?
+  metrics             Metric[]
+  payout              Payout?
+  seedingClaim        SeedingClaim?
+  streamingClaim      StreamingClaim?
+  sensitiveFlag       SensitiveContentFlag?
+  politicalReview     PoliticalReviewQueue?
+
+  @@unique([campaignId, creatorId])
+  @@map("campaign_claims")
+}
+
+// ─── Submission & Verification ─────────────────────────────────────────────────
+
+model SubmissionEvent {
+  id                      String           @id @default(cuid())
+  claimId                 String
+  claim                   CampaignClaim    @relation(fields: [claimId], references: [id])
+  submittedUrl            String
+  submittedAt             DateTime         @default(now())
+  screenshotUrl           String?          // required for ephemeral content
+  existenceVerified       Boolean          @default(false)
+  withinCampaignWindow    Boolean          @default(false)
+  trackedIdentifierPresent Boolean         @default(false)
+  accountOwnershipVerified Boolean         @default(false)
+  status                  SubmissionStatus
+
+  @@map("submission_events")
+}
+
+model QualificationResult {
+  id          String                @id @default(cuid())
+  claimId     String                @unique
+  claim       CampaignClaim         @relation(fields: [claimId], references: [id])
+  method      QualificationMethod
+  confidence  Float?
+  decision    QualificationDecision
+  reviewedBy  String                @default("ai") // "ai" | userId for human
+  notes       String?
+  createdAt   DateTime              @default(now())
+
+  @@map("qualification_results")
+}
+
+// ─── Metrics ───────────────────────────────────────────────────────────────────
+
+model Metric {
+  id                 String                   @id @default(cuid())
+  claimId            String
+  claim              CampaignClaim            @relation(fields: [claimId], references: [id])
+  platform           String
+  metricType         MetricType
+  value              Decimal                  @db.Decimal(18, 2)
+  verificationMethod MetricVerificationMethod
+  capturedAt         DateTime                 @default(now())
+
+  @@map("metrics")
+}
+
+// ─── Payouts & Financial ───────────────────────────────────────────────────────
+
+model Payout {
+  id              String        @id @default(cuid())
+  claimId         String        @unique
+  claim           CampaignClaim @relation(fields: [claimId], references: [id])
+  amount          Decimal       @db.Decimal(18, 2)
+  currency        Currency
+  payoutMethod    PayoutMethod
+  pspProvider     PspProvider
+  holdReleaseDate DateTime?
+  status          PayoutStatus  @default(held)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  ledgerEntries LedgerEntry[]
+
+  @@map("payouts")
+}
+
+model CreatorBankAccount {
+  id                  String    @id @default(cuid())
+  creatorId           String    @unique
+  creator             User      @relation(fields: [creatorId], references: [id])
+  accountNumber       String
+  bankCode            String
+  resolvedAccountName String?
+  nameMatchVerified   Boolean   @default(false)
+  verifiedAt          DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  @@map("creator_bank_accounts")
+}
+
+model CampaignFunding {
+  id                     String      @id @default(cuid())
+  campaignId             String      @unique
+  campaign               Campaign    @relation(fields: [campaignId], references: [id])
+  depositedAmount        Decimal     @db.Decimal(18, 2)
+  platformCommissionRate Decimal     @db.Decimal(5, 4) // e.g. 0.1200 = 12%
+  platformCommissionAmount Decimal   @db.Decimal(18, 2)
+  netBudgetAvailable     Decimal     @db.Decimal(18, 2)
+  currency               Currency
+  pspProvider            PspProvider
+  pspReference           String?
+  fundedAt               DateTime    @default(now())
+  refundedAmount         Decimal?    @db.Decimal(18, 2)
+  refundedAt             DateTime?
+
+  ledgerEntries LedgerEntry[]
+
+  @@map("campaign_fundings")
+}
+
+model LedgerEntry {
+  id            String          @id @default(cuid())
+  entryType     LedgerEntryType
+  amount        Decimal         @db.Decimal(18, 2)
+  currency      Currency
+  campaignId    String?
+  claimId       String?
+  payoutId      String?
+  fundingId     String?
+  payout        Payout?         @relation(fields: [payoutId], references: [id])
+  funding       CampaignFunding? @relation(fields: [fundingId], references: [id])
+  pspProvider   PspProvider?
+  pspReference  String?
+  timestamp     DateTime        @default(now())
+
+  @@map("ledger_entries")
+}
+
+// ─── Trust System ──────────────────────────────────────────────────────────────
+
+model TrustEvent {
+  id          String         @id @default(cuid())
+  userId      String
+  user        User           @relation(fields: [userId], references: [id])
+  eventType   TrustEventType
+  scoreImpact Int            // positive or negative
+  notes       String?
+  timestamp   DateTime       @default(now())
+
+  @@map("trust_events")
+}
+
+// ─── Seeding ───────────────────────────────────────────────────────────────────
+
+model ProductInventory {
+  id                 String   @id @default(cuid())
+  campaignId         String
+  campaign           Campaign @relation(fields: [campaignId], references: [id])
+  productName        String
+  variant            String?  // size, color, etc.
+  unitsAvailable     Int
+  unitsClaimed       Int      @default(0)
+  unitValue          Decimal  @db.Decimal(18, 2)
+  shippingCostEstimate Decimal? @db.Decimal(18, 2)
+
+  @@map("product_inventory")
+}
+
+model SeedingClaim {
+  id                  String        @id @default(cuid())
+  claimId             String        @unique
+  claim               CampaignClaim @relation(fields: [claimId], references: [id])
+  shippingAddressId   String
+  shippingAddress     ShippingAddress @relation(fields: [shippingAddressId], references: [id])
+  courierProvider     String?
+  trackingRef         String?
+  deliveredConfirmedAt DateTime?
+  contentDeadline     DateTime?
+
+  @@map("seeding_claims")
+}
+
+model ShippingAddress {
+  id                   String   @id @default(cuid())
+  creatorId            String
+  addressText          String
+  pickupPointId        String?
+  verifiedViaCourierApi Boolean  @default(false)
+  createdAt            DateTime @default(now())
+
+  seedingClaims SeedingClaim[]
+
+  @@map("shipping_addresses")
+}
+
+// ─── Streaming ─────────────────────────────────────────────────────────────────
+
+model StreamingClaim {
+  id                     String        @id @default(cuid())
+  claimId                String        @unique
+  claim                  CampaignClaim @relation(fields: [claimId], references: [id])
+  scheduledSegmentTime   DateTime?
+  vodUrl                 String?
+  verificationMethod     String        // "live_api" | "vod_review"
+  eligibilityCheckResult Json?         // result of per-campaign criteria check at claim time
+
+  @@map("streaming_claims")
+}
+
+// ─── Compliance Queues ─────────────────────────────────────────────────────────
+
+model PoliticalReviewQueue {
+  id               String        @id @default(cuid())
+  claimId          String        @unique
+  claim            CampaignClaim @relation(fields: [claimId], references: [id])
+  assignedReviewerId String?
+  status           ReviewStatus  @default(pending)
+  checklistResult  Json?         // { identityConfirmed, disclosurePresent, fundingSourceNigerian, withinAllowedElectionWindow }
+  decisionRationale String?
+  decidedAt        DateTime?
+  createdAt        DateTime      @default(now())
+
+  @@map("political_review_queue")
+}
+
+model SensitiveContentFlag {
+  id                String                   @id @default(cuid())
+  claimId           String                   @unique
+  claim             CampaignClaim            @relation(fields: [claimId], references: [id])
+  category          SensitiveContentCategory
+  assignedReviewerId String?
+  status            ReviewStatus             @default(pending)
+  decisionRationale String?
+  decidedAt         DateTime?
+  createdAt         DateTime                 @default(now())
+
+  @@map("sensitive_content_flags")
+}
+
+// ─── Audit Log ─────────────────────────────────────────────────────────────────
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  entityType String
+  entityId   String
+  action     String
+  actorId    String?
+  actor      User?    @relation(fields: [actorId], references: [id])
+  details    Json?
+  timestamp  DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([actorId])
+  @@map("audit_logs")
+}

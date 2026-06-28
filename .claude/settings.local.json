@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(gh api *)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:planetscale.com)",
+      "PowerShell(Get-ChildItem \"C:\\\\Users\\\\Administrator\\\\lensmint\\\\.claude\\\\skills\" | Sort-Object Name | Select-Object Name, @{N=\"Size\";E={\\(Get-Item \"$\\($_.FullName\\)\\\\SKILL.md\"\\).Length}} | Format-Table -AutoSize)",
+      "PowerShell(New-Item -ItemType Directory -Force -Path \"C:\\\\Users\\\\Administrator\\\\lensmint\\\\packages\\\\db\\\\prisma\")",
+      "PowerShell(New-Item -ItemType Directory -Force -Path \"C:\\\\Users\\\\Administrator\\\\lensmint\\\\packages\\\\db\\\\src\")",
+      "PowerShell(New-Item -ItemType Directory -Force -Path \"C:\\\\Users\\\\Administrator\\\\lensmint\\\\packages\\\\shared\\\\src\")",
+      "PowerShell(npm install -g pnpm; $env:PATH = [System.Environment]::GetEnvironmentVariable\\(\"PATH\",\"Machine\"\\) + \";\" + [System.Environment]::GetEnvironmentVariable\\(\"PATH\",\"User\"\\); pnpm --version)",
+      "PowerShell(node --version)",
+      "PowerShell(npm --version)",
+      "PowerShell($env:PATH = \"C:\\\\Program Files\\\\nodejs;\" + $env:PATH; node --version; npm --version)"
+    ]
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "name": "lensmint",
+  "version": "0.0.1",
+  "private": true,
+  "packageManager": "pnpm@9.0.0",
+  "scripts": {
+    "build": "turbo build",
+    "dev": "turbo dev",
+    "lint": "turbo lint",
+    "typecheck": "turbo typecheck",
+    "db:migrate": "pnpm --filter @lensmint/db migrate:dev",
+    "db:generate": "pnpm --filter @lensmint/db generate"
+  },
+  "devDependencies": {
+    "turbo": "^2.0.0",
+    "typescript": "^5.4.0"
+  }
+}
